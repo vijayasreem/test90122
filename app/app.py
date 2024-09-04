@@ -1,52 +1,67 @@
-Sure! Here's an example of Python Flask API code that implements the given user story:
+Here is an example of Python Flask API code that implements the given user story:
 
 ```python
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Endpoint for accessing the F&F approval request form
-@app.route('/approval-request', methods=['GET'])
-def get_approval_request_form():
-    # Return the form HTML or render a template for the form
-    return "F&F Approval Request Form"
+# In-memory storage for loan applications
+loan_applications = []
 
-# Endpoint for submitting the F&F approval request
-@app.route('/approval-request', methods=['POST'])
-def submit_approval_request():
-    # Get the case remarks and other relevant details from the request
-    case_remarks = request.form.get('case_remarks')
-    # Process and validate the request data
+# Route to create a new loan application
+@app.route('/loan_applications', methods=['POST'])
+def create_loan_application():
+    data = request.get_json()
+    applicant_id = data.get('applicant_id')
+    
+    # Check if the applicant already has an active loan application
+    for application in loan_applications:
+        if application['applicant_id'] == applicant_id and application['status'] == 'active':
+            return jsonify({'message': 'Applicant already has an active loan application'}), 400
+    
+    # Create a new loan application
+    loan_application = {
+        'applicant_id': applicant_id,
+        'status': 'active',
+        'details': data.get('details')
+    }
+    loan_applications.append(loan_application)
+    
+    return jsonify({'message': 'Loan application created successfully'}), 201
 
-    # Send the F&F approval request to QC2 / Regional Manager
-    # Update the case status to 'F&F Approval Pending with QC2'
+# Route to get all loan applications associated with a single applicant
+@app.route('/loan_applications/<applicant_id>', methods=['GET'])
+def get_loan_applications(applicant_id):
+    applications = []
+    
+    # Find all loan applications associated with the applicant
+    for application in loan_applications:
+        if application['applicant_id'] == applicant_id:
+            applications.append(application)
+    
+    return jsonify(applications), 200
 
-    # Send an auto-mailer with the basic case details to QC2 / Regional Manager
-
-    # Return a success response
-    return jsonify({'message': 'F&F approval request submitted successfully'})
-
-# Endpoint for QC2 / Regional Manager to review and provide recommendation
-@app.route('/approval-request/<request_id>', methods=['PUT'])
-def review_approval_request(request_id):
-    # Get the decision and remarks from the request
-    decision = request.form.get('decision')
-    remarks = request.form.get('remarks')
-    # Process and validate the request data
-
-    # Capture the decision and remarks in the system
-    # Update the case status based on the decision
-
-    # Return a success response
-    return jsonify({'message': 'Approval request reviewed successfully'})
+# Route to update the status of a loan application
+@app.route('/loan_applications/<applicant_id>/<application_id>', methods=['PUT'])
+def update_loan_application(applicant_id, application_id):
+    data = request.get_json()
+    new_status = data.get('status')
+    
+    # Find the loan application to update
+    for application in loan_applications:
+        if application['applicant_id'] == applicant_id and application['id'] == application_id:
+            application['status'] = new_status
+            return jsonify({'message': 'Loan application updated successfully'}), 200
+    
+    return jsonify({'message': 'Loan application not found'}), 404
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
 ```
 
-This code defines three endpoints:
-1. `/approval-request` (GET): This endpoint allows the LSO to access the F&F approval request form.
-2. `/approval-request` (POST): This endpoint allows the LSO to submit the F&F approval request with case remarks.
-3. `/approval-request/<request_id>` (PUT): This endpoint allows the QC2 / Regional Manager to review the request and provide their recommendation.
+This code defines three routes:
+- `/loan_applications` (POST): Creates a new loan application. It checks if the applicant already has an active loan application before creating a new one.
+- `/loan_applications/<applicant_id>` (GET): Retrieves all loan applications associated with a single applicant.
+- `/loan_applications/<applicant_id>/<application_id>` (PUT): Updates the status of a loan application.
 
-Please note that this is a basic implementation and you may need to modify it according to your specific requirements and database setup.
+You can run this Flask API code by executing the script. The API will be accessible at `http://localhost:5000`. Please note that this code only provides a basic implementation and may need to be extended or modified to meet specific requirements.
